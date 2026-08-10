@@ -1,0 +1,35 @@
+[Unit]
+Description=smsgw - SMS/MMS gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=smsgw
+# Primary group is dialout so the process can open the modem. The smsgw group
+# is what grants read access to /etc/smsgw, and a primary group does not imply
+# the user's other groups here - it has to be listed explicitly.
+Group=dialout
+SupplementaryGroups=smsgw
+ExecStart=/usr/bin/python3 -m smsgw.main -c /etc/smsgw/smsgw.yaml run
+WorkingDirectory=/opt/smsgw
+Environment=PYTHONPATH=/opt/smsgw
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=10
+
+StateDirectory=smsgw
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/smsgw
+DeviceAllow=/dev/ttyUSB0 rw
+DeviceAllow=/dev/ttyUSB1 rw
+DeviceAllow=/dev/ttyUSB2 rw
+DeviceAllow=/dev/ttyUSB3 rw
+DeviceAllow=/dev/ttyUSB4 rw
+DeviceAllow=/dev/ttyS0 rw
+
+[Install]
+WantedBy=multi-user.target

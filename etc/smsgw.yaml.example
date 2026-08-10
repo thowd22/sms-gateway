@@ -1,0 +1,71 @@
+# smsgw - a small SMS/MMS gateway.  Deployed to /etc/smsgw/smsgw.yaml
+#
+# The gateway is a transport, not a rules engine: it sends what it is told to
+# send and reports what it receives.  Whatever decides *when* to send calls
+# POST /send.
+
+http:
+  # No auth, no TLS.  Anything on the LAN that reaches this port can send
+  # messages on your account and read every message received.  Keep it off any
+  # interface you don't control.
+  host: 0.0.0.0
+  port: 8080
+
+line:
+  # This line's own number. Used as the From address on outgoing MMS.
+  number: "+15550001111"
+
+modem:
+  port: /dev/sim7600-at       # udev symlink, pinned to USB interface 02
+  poll_seconds: 20            # how often to check the SIM for inbound SMS
+
+default_carrier: tmobile
+
+sinks:
+  # Real MMS over the cellular network: an M-Send.req PDU POSTed to T-Mobile's
+  # MMSC through the modem's own TCP stack.  No email gateway, no dependency on
+  # this building's internet.  Takes ~25s for a 15KB payload.
+  - name: mms_native
+    type: mms_native
+    port: /dev/sim7600-at
+    from: "+15550001111"
+    image:
+      max_width: 640          # keep the PDU small; carriers are strict
+      quality: 70
+
+  # Plain text SMS over the same modem.  Caps at 160 characters.
+  - name: sms
+    type: sms_modem
+    port: /dev/sim7600-at
+
+  # Email-to-MMS fallback.  Kept configured but out of the routing chains now
+  # that native MMS works; it needs SMTP credentials and this building's
+  # internet, which is exactly what the cellular path exists to avoid.
+  - name: mms_email
+    type: email_mms
+    smtp:
+      host: smtp.gmail.com
+      port: 587
+      user: you@example.com
+      password_file: /etc/smsgw/smtp.pass
+    from: "smsgw <you@example.com>"
+
+# Chains are tried in order; first success wins.  Selected by content shape, so
+# callers never have to know carrier mechanics - see POST /send 'force' to
+# override.
+routing:
+  with_image: [mms_native, sms]   # picture; if MMS fails the text still goes
+  long_text:  [mms_native, sms]   # >160 chars: SMS would truncate
+  text_only:  [sms]
+
+# Inbound messages are POSTed as JSON to each of these.  Best effort: a dead
+# subscriber never loses the message, since it stays in the store and
+# GET /messages?since= will still return it.
+forward: []
+
+limits:
+  # Hard ceiling enforced before any sink is called.  Every message costs money.
+  max_per_hour: 30
+  max_per_day: 150
+
+state_dir: /var/lib/smsgw
