@@ -110,6 +110,39 @@ Tools: `send_message`, `list_messages`, `gateway_health`.
 }
 ```
 
+### Adding it to Claude Code
+
+The server runs on the machine Claude runs on, not the Pi — it only needs the
+gateway's URL and a copy of this repo it can import.
+
+```sh
+git clone https://github.com/thowd22/sms-gateway ~/src/sms-gateway
+
+claude mcp add smsgw \
+  --env PYTHONPATH=$HOME/src/sms-gateway \
+  --env SMSGW_URL=http://192.0.2.62:8080 \
+  -- python3 -m smsgw.mcp_server
+```
+
+Replace `192.0.2.62:8080` with the Pi's address and port. Add `--scope user` to make
+it available in every project instead of just the current one. `SMSGW_TIMEOUT`
+(seconds, default 30) is also honoured — raise it on a slow link, since sending an
+MMS holds the AT port for a while.
+
+Verify with `claude mcp list`, or ask Claude to run `gateway_health` — it reports
+modem registration, signal, and message counts without sending anything.
+
+For Claude Desktop, put the JSON block above into `claude_desktop_config.json`
+(macOS: `~/Library/Application Support/Claude/`, Windows:
+`%APPDATA%\Claude\`) and restart the app.
+
+### The `sms` skill
+
+`.claude/skills/sms/` teaches Claude how to use these tools well — cost rules for
+SMS vs MMS, the `since`-based idiom for polling for replies, and what to check when a
+send fails. Claude Code picks it up automatically in this repo; to use it elsewhere,
+copy the directory to `~/.claude/skills/sms/`.
+
 Protocol notes worth keeping:
 
 - Transport is newline-delimited JSON on stdin/stdout. **Nothing may be written
