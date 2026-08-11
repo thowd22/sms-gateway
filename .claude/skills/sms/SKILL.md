@@ -1,6 +1,6 @@
 ---
 name: sms
-description: Send and receive SMS/MMS through the smsgw cellular gateway via its MCP tools (send_message, list_messages, gateway_health). Use whenever the user asks to text or message a phone number, send a picture to a phone, check for replies or incoming texts, wait for someone's response, or diagnose the SMS gateway/modem. Also covers cost rules (SMS vs MMS), polling for replies, and what to do when a send fails.
+description: Send and receive SMS/MMS through the smsgw cellular gateway via its MCP tools (send_message, list_messages, gateway_health). Use whenever the user asks to text or message a phone number or a person by name, send a picture to a phone, check for replies or incoming texts, wait for someone's response, or diagnose the SMS gateway/modem. Also covers the address book of named recipients, cost rules (SMS vs MMS), polling for replies, and what to do when a send fails.
 ---
 
 # Texting through the smsgw gateway
@@ -19,6 +19,38 @@ number they gave. Never send a test message to check whether the gateway works �
 Before a first send in a conversation, make sure you have the number right. If the
 user says "text Mom" and you have no number on file, ask; do not guess from context or
 from a number that appears in unrelated files.
+
+## Address Book
+
+So the user can say "text Sarah" instead of reciting ten digits.
+
+**No real numbers in this file.** This repo is public. What follows is the template;
+the live address book lives in the user's local copy of this skill at
+`~/.claude/skills/sms/SKILL.md`, which is never committed. Keep the two in sync for
+everything *except* the table.
+
+| name | number | notes |
+|---|---|---|
+| _Example_ | `+15551234567` | who they are, what they should be texted about |
+
+Resolve a name **only** from a row in the local copy. If the name isn't there, ask for
+the number. Do not infer one from `list_messages` history, from other files on the
+machine, or from a number that happens to appear earlier in the conversation — a
+number that has traffic is not the same as a number the user meant.
+
+When two rows could match a name the user gave ("Mike"), ask which; don't pick the
+first or the more recently used.
+
+Read the resolved number back when you report the send: "Sent SMS #52 to Sarah
+(+1 555-123-4567)." The user needs to see which number you chose, because that is the
+step they cannot otherwise check.
+
+Adding, changing, or removing a row is the user's call. Don't add someone because
+their number showed up in the message history, and don't quietly correct a row that
+looks wrong — say what looks wrong and let them decide.
+
+One reserved row worth keeping in the local copy: the gateway's **own** number. It is
+a sink for carrier notices, not a person, and texting it is always a mistake.
 
 ## Sending
 
